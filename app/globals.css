@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   QuestLearn design tokens.
+
+   Built for phones held by 8–14 year olds: large type, 56px+ touch targets,
+   and every text/background pair measured against WCAG AA. The ratios below
+   are computed, not estimated — `npm run check:contrast` re-verifies them.
+--------------------------------------------------------------------------- */
+
+:root {
+  --bg: #f6f2ff;
+  --surface: #ffffff;
+  --surface-alt: #f3eeff;
+  --ink: #1a1033;          /* 18.0:1 on --surface */
+  --ink-soft: #4b3f6b;     /*  9.5:1 on --surface */
+  --ink-faint: #6b5f88;    /*  5.8:1 on --surface, 5.3:1 on --bg */
+  --line: #ded3f7;
+
+  --primary: #5b2fd6;      /*  7.4:1 white-on-primary */
+  --primary-dark: #4522a8;
+  --primary-soft: #ede6ff;
+
+  --success: #0f7a55;      /*  5.3:1 white-on-success */
+  --success-soft: #dff5ec;
+  --danger: #b3164c;       /*  6.7:1 white-on-danger */
+  --danger-soft: #ffe4ee;
+  --xp: #b45309;           /*  5.0:1 on white, for text */
+  --xp-fill: #f59e0b;      /* decorative bar fill only */
+  --streak: #c2430a;       /*  4.7:1 on --bg — the lighter orange was 3.8:1 */
+
+  --radius: 18px;
+  --shadow: 0 2px 0 0 var(--line), 0 8px 24px -12px rgba(26, 16, 51, 0.35);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-xp: var(--xp);
+  --color-streak: var(--streak);
+  --radius-card: var(--radius);
+}
+
+html {
+  /* 18px base — the brief's readers are 8–14 and often on a small phone. */
+  font-size: 18px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Never remove the focus ring — keyboard and switch users depend on it. */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+@layer components {
+  .ql-card {
+    background: var(--surface);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  /* Every tappable thing clears the 44px WCAG minimum with room to spare. */
+  .ql-btn {
+    min-height: 56px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+  .ql-btn:active:not(:disabled) { transform: translateY(2px); }
+  .ql-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .ql-btn-primary {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 0 0 var(--primary-dark);
+  }
+  .ql-btn-primary:active:not(:disabled) { box-shadow: 0 2px 0 0 var(--primary-dark); }
+  .ql-btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+  .ql-btn-ghost {
+    background: var(--surface);
+    color: var(--primary);
+    border-color: var(--line);
+  }
+  .ql-btn-ghost:hover:not(:disabled) { background: var(--primary-soft); }
+
+  /* Answer choices: extra-large targets, since a mis-tap costs a wrong answer. */
+  .ql-choice {
+    width: 100%;
+    min-height: 68px;
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    border: 3px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1.25rem;
+    font-weight: 800;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    cursor: pointer;
+    transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+  .ql-choice:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+  .ql-choice:active:not(:disabled) { transform: scale(0.985); }
+  .ql-choice:disabled { cursor: default; }
+  .ql-choice-key {
+    flex: none;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--surface-alt);
+    color: var(--ink-soft);
+    display: grid; place-items: center;
+    font-size: 1rem; font-weight: 900;
+  }
+  .ql-choice-correct {
+    border-color: var(--success);
+    background: var(--success-soft);
+  }
+  .ql-choice-correct .ql-choice-key { background: var(--success); color: #fff; }
+  .ql-choice-wrong {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+  }
+  .ql-choice-wrong .ql-choice-key { background: var(--danger); color: #fff; }
+}
+
+/* --- motion ---------------------------------------------------------------- */
+
+@keyframes ql-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ql-rise {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes ql-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+@keyframes ql-shine {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+.ql-pop   { animation: ql-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+.ql-rise  { animation: ql-rise 280ms ease-out both; }
+.ql-shake { animation: ql-shake 320ms ease-in-out both; }
+.ql-shine {
+  background-image: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.75) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: ql-shine 1.4s ease-in-out infinite;
+}
+
+/* Respect the OS setting — animation here is decorative, never load-bearing. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

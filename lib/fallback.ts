@@ -118,9 +118,10 @@ interface Draft {
   explanation: string;
 }
 
-// Number ranges widen with difficulty.
+// Number ranges widen with difficulty, which maps roughly onto grade:
+//   1 → K-1   2 → 1-2   3 → 3-4   4 → 4-5   5 → 6
 const RANGE: Record<Difficulty, [number, number]> = {
-  1: [1, 10],
+  1: [1, 9],     // K-1 — keeps every sum inside 20
   2: [2, 25],
   3: [3, 60],
   4: [12, 250],
@@ -130,11 +131,98 @@ const RANGE: Record<Difficulty, [number, number]> = {
 type Gen = (r: Rng, d: Difficulty, v: Vocab, scaffold: boolean) => Draft;
 
 const GENERATORS: Record<string, Gen> = {
+  // --- K-2 number sense -------------------------------------------------------
+  // These are the floor of the ladder, so wording is kept to a few words and
+  // the numbers stay small enough to count on fingers.
+
+  counting: (r, d) => {
+    const top = d <= 1 ? 19 : 49;
+    if (r() < 0.5) {
+      const n = int(r, 1, top - 1);
+      return {
+        prompt: `What number comes after ${n}?`,
+        ...mc(r, n + 1, [n - 1, n + 2, n + 10, n + 3]),
+        hint: `Count up one from ${n}.`,
+        explanation: `After ${n} comes ${n + 1}.`,
+      };
+    }
+    const start = int(r, 1, top - 4);
+    return {
+      prompt: `What comes next? ${start}, ${start + 1}, ${start + 2},\u00A0?`,
+      ...mc(r, start + 3, [start + 2, start + 4, start + 5, start + 1]),
+      hint: `Each number goes up by one.`,
+      explanation: `${start + 2} + 1 = ${start + 3}.`,
+    };
+  },
+
+  comparing: (r, d) => {
+    const top = d <= 1 ? 20 : 120;
+    const picked = new Set<number>();
+    while (picked.size < 4) picked.add(int(r, 1, top));
+    const nums = [...picked];
+    const wantBiggest = r() < 0.5;
+    const answer = wantBiggest ? Math.max(...nums) : Math.min(...nums);
+    const others = nums.filter((n) => n !== answer);
+    return {
+      prompt: wantBiggest ? "Which number is biggest?" : "Which number is smallest?",
+      ...mc(r, answer, others),
+      hint: wantBiggest
+        ? "Look for the number furthest along the number line."
+        : "Look for the number closest to zero.",
+      explanation: `${answer} is the ${wantBiggest ? "biggest" : "smallest"} of ${nums.join(", ")}.`,
+    };
+  },
+
+  "skip-counting": (r, d) => {
+    const step = pick(r, d <= 1 ? [2, 5, 10] : [2, 3, 4, 5, 10]);
+    const startMultiple = int(r, 1, 6);
+    const a = step * startMultiple;
+    const next = a + step * 3;
+    return {
+      prompt: `Count by ${step}s. What comes next? ${a}, ${a + step}, ${a + step * 2},\u00A0?`,
+      ...mc(r, next, [next + step, next - step, next + 1, a + step * 4]),
+      hint: `Each jump adds ${step}.`,
+      explanation: `${a + step * 2} + ${step} = ${next}.`,
+    };
+  },
+
+  shapes: (r, d) => {
+    // Vocabulary widens with the rung: K-1 knows the first three by name.
+    const easy = [
+      { name: "triangle", sides: 3 },
+      { name: "square", sides: 4 },
+      { name: "rectangle", sides: 4 },
+    ];
+    const harder = [
+      { name: "pentagon", sides: 5 },
+      { name: "hexagon", sides: 6 },
+      { name: "octagon", sides: 8 },
+    ];
+    const shape = pick(r, d <= 1 ? easy : [...easy, ...harder]);
+    const askCorners = r() < 0.4;
+    return {
+      prompt: `How many ${askCorners ? "corners" : "sides"} does a ${shape.name} have?`,
+      ...mc(r, shape.sides, [shape.sides + 1, shape.sides - 1, shape.sides + 2, shape.sides * 2]),
+      hint: `Picture a ${shape.name} and count round the edge.`,
+      explanation: `A ${shape.name} has ${shape.sides} ${askCorners ? "corners" : "sides"}.`,
+    };
+  },
+
   addition: (r, d, v, scaffold) => {
     const [lo, hi] = scaffold ? RANGE[Math.max(1, d - 1) as Difficulty] : RANGE[d];
     const a = int(r, lo, hi);
     const b = int(r, lo, hi);
     const sum = a + b;
+    // A 5-year-old who cannot yet read a sentence can still read "3 + 2".
+    // At the K-1 rung the words are the barrier, not the maths.
+    if (d === 1) {
+      return {
+        prompt: `What is ${a} + ${b}?`,
+        ...mc(r, sum, [sum - 1, sum + 1, sum + 2, Math.abs(a - b)]),
+        hint: `Start at ${a}. Count on ${b} more.`,
+        explanation: `${a} + ${b} = ${sum}.`,
+      };
+    }
     return {
       prompt: `${v.actor} ${v.verb} ${a} ${v.item}, then ${b} more. How many ${v.item} in total?`,
       ...mc(r, sum, [sum - 1, sum + 1, Math.abs(a - b), sum + 10]),
@@ -148,6 +236,14 @@ const GENERATORS: Record<string, Gen> = {
     const a = int(r, lo + 2, hi + 5);
     const b = int(r, lo, Math.max(lo, a - 1));
     const diff = a - b;
+    if (d === 1) {
+      return {
+        prompt: `What is ${a} − ${b}?`,
+        ...mc(r, diff, [diff + 1, diff - 1, a + b, diff + 2]),
+        hint: `Start at ${a}. Count back ${b}.`,
+        explanation: `${a} − ${b} = ${diff}.`,
+      };
+    }
     return {
       prompt: `${v.actor} has ${a} ${v.item} and uses ${b} of them at ${v.place}. How many are left?`,
       ...mc(r, diff, [diff + 1, diff - 1, a + b, Math.abs(b - a) + 2]),
@@ -310,15 +406,26 @@ const GENERATORS: Record<string, Gen> = {
   },
 
   "pre-algebra": (r, d, v) => {
-    const x = int(r, 2, d >= 5 ? 25 : 12);
-    const coef = int(r, 2, d >= 5 ? 9 : 5);
-    const add = int(r, 1, d >= 5 ? 40 : 15);
-    const result = coef * x + add;
+    // 6th grade solves one-step equations (x + p = q, px = q). Two-step
+    // equations are 7th-grade work and sit above this app's ceiling.
+    const x = int(r, 2, 20);
+    if (r() < 0.5) {
+      const add = int(r, 2, 30);
+      const result = x + add;
+      return {
+        prompt: `${v.actor} had some ${v.item}, found ${add} more, and now has ${result}. Solve x + ${add} = ${result}.`,
+        ...mc(r, x, [result + add, result, add, x + 1]),
+        hint: `Undo the + ${add} by taking ${add} away from both sides.`,
+        explanation: `${result} − ${add} = ${x}, so x = ${x}.`,
+      };
+    }
+    const coef = int(r, 2, 9);
+    const result = coef * x;
     return {
-      prompt: `${v.actor} ${v.verb} the same number of ${v.item} in each of ${coef} runs, then finds ${add} more — ${result} in total. How many did each run give? (Solve ${coef}x + ${add} = ${result})`,
-      ...mc(r, x, [result - add, Math.round(result / coef), x + 1, add]),
-      hint: `Undo the +${add} first, then undo the ×${coef}.`,
-      explanation: `${result} − ${add} = ${coef * x}, and ${coef * x} ÷ ${coef} = ${x}.`,
+      prompt: `${v.actor} ${v.verb} the same number of ${v.item} in each of ${coef} runs, ${result} in all. Solve ${coef}x = ${result}.`,
+      ...mc(r, x, [result, coef, result - coef, x + 1]),
+      hint: `Undo the × ${coef} by dividing both sides by ${coef}.`,
+      explanation: `${result} ÷ ${coef} = ${x}, so x = ${x}.`,
     };
   },
 

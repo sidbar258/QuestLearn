@@ -16,7 +16,13 @@ export async function GET() {
   return handle(async () => {
     const student = await requireStudent();
     const step = await nextStep(student);
-    return { ...step, level: levelFromXp(student.xp), xp: student.xp, streakDays: student.streakDays };
+    return {
+      ...step,
+      level: levelFromXp(student.xp),
+      xp: student.xp,
+      streakDays: student.streakDays,
+      earlyReader: student.gradeBand === "K-1",
+    };
   });
 }
 
@@ -26,7 +32,13 @@ export async function PUT() {
     const student = await requireStudent();
     await startQuestLine(student);
     const step = await nextStep(student);
-    return { ...step, level: levelFromXp(student.xp), xp: student.xp, streakDays: student.streakDays };
+    return {
+      ...step,
+      level: levelFromXp(student.xp),
+      xp: student.xp,
+      streakDays: student.streakDays,
+      earlyReader: student.gradeBand === "K-1",
+    };
   });
 }
 

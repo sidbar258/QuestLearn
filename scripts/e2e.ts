@@ -116,13 +116,13 @@ async function main() {
   const created = await s.req("POST", "/api/students", {
     name: "E2E Tester",
     avatar: "🦉",
-    ageBand: "10-11",
+    gradeBand: "4-5",
     theme: "space",
   });
   check("student created", created.status === 200 && Boolean(created.json.student?.id));
   const studentId: string = created.json.student.id;
 
-  const bad = await s.req("POST", "/api/students", { name: "", avatar: "nope", ageBand: "99", theme: "x" });
+  const bad = await s.req("POST", "/api/students", { name: "", avatar: "nope", gradeBand: "99", theme: "x" });
   check("invalid profile rejected", bad.status === 400, `got ${bad.status}`);
 
   // === 2. diagnostic, played perfectly → should place high ===
@@ -154,6 +154,56 @@ async function main() {
   // replaying a graded question must not double-count
   const replay = await s.req("POST", "/api/diagnostic", { choiceIndex: 0 });
   check("replaying a spent question is refused", replay.status === 409, `got ${replay.status}`);
+
+  // === 2b. the ladder spans K-6 ===
+  console.log("\n2b. Grade range (K-6)");
+
+  const badGrade = await new Session().req("POST", "/api/students", {
+    name: "Nope", avatar: "🦊", gradeBand: "12-14", theme: "space",
+  });
+  check("a grade outside K-6 is rejected", badGrade.status === 400, `got ${badGrade.status}`);
+
+  // A kindergartener must not open on work three grades above them.
+  const k = new Session();
+  const kRes = await k.req("POST", "/api/students", {
+    name: "Kinder", avatar: "🐝", gradeBand: "K-1", theme: "animals",
+  });
+  check("kindergarten profile accepted", kRes.status === 200);
+  const kFirst = await k.req("PUT", "/api/diagnostic");
+  check("K-1 starts at the easiest rung", kFirst.json.question?.difficulty === 1,
+    `started at d${kFirst.json.question?.difficulty}`);
+  check("K-1 gets prominent read-aloud", kFirst.json.earlyReader === true);
+
+  // Wording is the barrier at this age, so the floor keeps prompts tiny.
+  const kWords = kFirst.json.question.prompt.trim().split(/\s+/).length;
+  check("K-1 prompts stay short (<= 10 words)", kWords <= 10,
+    `${kWords} words: "${kFirst.json.question.prompt}"`);
+  console.log(`     K-1 sees: "${kFirst.json.question.prompt}" (${kWords} words)`);
+
+  // Placement is relative to grade — acing the K-1 rung is not "beginner".
+  let kResult: any = null;
+  for (let i = 0; i < 7; i++) {
+    const a = await k.req("POST", "/api/diagnostic", { choiceIndex: await peek(k) });
+    if (a.json.done) { kResult = a.json.result; break; }
+    await k.req("GET", "/api/diagnostic");
+  }
+  check("a kindergartener who aces it is not labelled a beginner",
+    kResult?.level !== "beginner", `got ${kResult?.level}`);
+  // The important half: acing K-1 must not fling them onto 4th-grade content.
+  check("a perfect K-1 run stays near grade level (d2 at most)",
+    (kResult?.difficulty ?? 9) <= 2, `placed at d${kResult?.difficulty}`);
+  console.log(`     K-1 perfect run placed: ${kResult?.level} @ d${kResult?.difficulty}`);
+
+  // A 6th grader starts far higher on the same ladder.
+  const six = new Session();
+  await six.req("POST", "/api/students", {
+    name: "Sixer", avatar: "🦉", gradeBand: "6", theme: "gaming",
+  });
+  const sixFirst = await six.req("PUT", "/api/diagnostic");
+  check("6th grade starts well above K-1", sixFirst.json.question?.difficulty >= 4,
+    `started at d${sixFirst.json.question?.difficulty}`);
+  check("6th grade does not get the early-reader treatment", sixFirst.json.earlyReader === false);
+  console.log(`     6th sees: "${sixFirst.json.question.prompt.slice(0, 70)}…"`);
 
   // === 3. quest line ===
   console.log("\n3. Quest line");
@@ -237,7 +287,7 @@ async function main() {
   console.log("\n5. Adaptive difficulty (deliberately answering wrong)");
   const s2 = new Session();
   const weak = await s2.req("POST", "/api/students", {
-    name: "Struggler", avatar: "🐸", ageBand: "8-9", theme: "sports",
+    name: "Struggler", avatar: "🐸", gradeBand: "K-1", theme: "sports",
   });
   const weakId = weak.json.student.id;
   await s2.req("PUT", "/api/diagnostic");
@@ -274,7 +324,7 @@ async function main() {
   console.log("\n5b. Step-down is one rung at a time (from a high placement)");
   const s3 = new Session();
   await s3.req("POST", "/api/students", {
-    name: "Faller", avatar: "🐙", ageBand: "12-14", theme: "gaming",
+    name: "Faller", avatar: "🐙", gradeBand: "6", theme: "gaming",
   });
   await s3.req("PUT", "/api/diagnostic");
   let placed: any = null;
@@ -346,6 +396,59 @@ async function main() {
   const out = await p2.req("DELETE", "/api/parent");
   check("sign out works", out.status === 200);
   check("dashboard locked again after sign out", (await p2.req("GET", "/api/parent")).status === 403);
+
+  // === 6b. removing a player ===
+  console.log("\n6b. Removing a player");
+
+  // A student with real history, so the cascade has something to clear.
+  const doomed = new Session();
+  const dRes = await doomed.req("POST", "/api/students", {
+    name: "Leaver", avatar: "🐧", gradeBand: "K-1", theme: "cooking",
+  });
+  const doomedId = dRes.json.student.id;
+  await doomed.req("PUT", "/api/diagnostic");
+  await doomed.req("POST", "/api/diagnostic", { choiceIndex: await peek(doomed) });
+  const dq = (await throughLessons(doomed, await doomed.req("GET", "/api/quest"))).cur;
+  if (dq.json.question) {
+    await doomed.req("POST", "/api/quest", { choiceIndex: await peek(doomed), timeMs: 4000 });
+  }
+
+  // Deleting is a grown-up action — an unauthenticated caller must be refused.
+  const strangerDelete = await doomed.req("DELETE", `/api/students/${doomedId}`);
+  check("delete refused without the parent PIN", strangerDelete.status === 403, `got ${strangerDelete.status}`);
+
+  const stillThere = await new Session().req("GET", "/api/students");
+  check("refused delete left the student in place",
+    stillThere.json.students?.some((x: any) => x.id === doomedId));
+
+  // Now as a signed-in grown-up.
+  const parent = new Session();
+  await parent.req("POST", "/api/parent", { pin: "4821" });
+  const del = await parent.req("DELETE", `/api/students/${doomedId}`);
+  check("parent can delete a student", del.status === 200, `got ${del.status}`);
+
+  const after = await new Session().req("GET", "/api/students");
+  check("student gone from the picker",
+    !after.json.students?.some((x: any) => x.id === doomedId));
+
+  const dash2 = await parent.req("GET", "/api/parent");
+  check("student gone from the dashboard",
+    !dash2.json.students?.some((x: any) => x.student.id === doomedId));
+
+  // The promise on the dashboard is that everything goes, not just the row.
+  const integrity = await new Session().req("GET", "/api/dev/integrity");
+  check("foreign keys are enforced", integrity.json?.foreignKeys === 1 || integrity.json?.foreignKeys === true,
+    `pragma=${integrity.json?.foreignKeys}`);
+  check("no orphaned rows anywhere after deletion", integrity.json?.totalOrphans === 0,
+    JSON.stringify(integrity.json?.orphans));
+
+  // A kid still holding the deleted profile's cookie must land softly.
+  const orphanCookie = await doomed.req("GET", "/api/quest");
+  check("deleted student's session is rejected, not crashed", orphanCookie.status === 401,
+    `got ${orphanCookie.status}`);
+
+  check("deleting one student left the others untouched",
+    after.json.students?.some((x: any) => x.id === studentId));
 
   // === 7. persistence across "sessions" ===
   console.log("\n7. Progress persistence");

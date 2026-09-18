@@ -5,7 +5,7 @@ import { HttpError, handle, requireStudent } from "@/lib/session";
 export async function GET() {
   return handle(async () => {
     const student = await requireStudent();
-    return await nextDiagnosticQuestion(student);
+    return { ...(await nextDiagnosticQuestion(student)), earlyReader: student.gradeBand === "K-1" };
   });
 }
 
@@ -14,7 +14,7 @@ export async function PUT() {
   return handle(async () => {
     const student = await requireStudent();
     startDiagnostic(student);
-    return await nextDiagnosticQuestion(student);
+    return { ...(await nextDiagnosticQuestion(student)), earlyReader: student.gradeBand === "K-1" };
   });
 }
 

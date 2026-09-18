@@ -26,6 +26,7 @@ interface QuestPayload {
   level: LevelInfo;
   xp: number;
   streakDays: number;
+  earlyReader?: boolean;
 }
 
 interface AnswerPayload extends Feedback {
@@ -204,6 +205,7 @@ export default function PlayPage() {
           topicLabel={review.topicLabel}
           busy={busy}
           doneLabel="Back to the question"
+          earlyReader={data?.earlyReader}
           onDone={() => setReview(null)}
         />
       ) : questFinished ? (
@@ -213,6 +215,7 @@ export default function PlayPage() {
           lesson={data.lesson}
           topicLabel={data.topicLabel ?? ""}
           busy={busy}
+          earlyReader={data.earlyReader}
           onDone={() => void finishLesson()}
         />
       ) : !data?.question && busy ? (
@@ -226,6 +229,7 @@ export default function PlayPage() {
             busy={busy}
             onAnswer={(i, ms) => void answer(i, ms)}
             onNext={() => void load("GET")}
+            earlyReader={data.earlyReader}
           />
           {!feedback && (
             <button

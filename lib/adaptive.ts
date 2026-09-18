@@ -82,15 +82,28 @@ export const DIAGNOSTIC_LENGTH = 7;
 export interface DiagnosticState {
   asked: { topic: string; difficulty: Difficulty; correct: boolean }[];
   difficulty: Difficulty;
+  /**
+   * How far above the student's grade the staircase may climb.
+   *
+   * Without this, seven lucky guesses walk a five-year-old up to 6th-grade
+   * ratios, and the quest line then gets built there — reading-heavy problems
+   * they cannot read, which is precisely the wall this app exists to remove.
+   * With four choices a guess lands 25% of the time, so this is not a rare
+   * case. Under-placing costs far less: the in-quest mastery engine promotes a
+   * genuinely advanced student within a few questions, while an over-placed one
+   * just quits.
+   */
+  ceiling: Difficulty;
 }
 
-export function newDiagnostic(): DiagnosticState {
-  return { asked: [], difficulty: 2 };
+export function newDiagnostic(start: Difficulty = 2): DiagnosticState {
+  return { asked: [], difficulty: start, ceiling: clamp(start + 1) };
 }
 
 export function diagnosticNext(state: DiagnosticState, wasCorrect: boolean): DiagnosticState {
   const step = wasCorrect ? 1 : -1;
-  return { ...state, difficulty: clamp(state.difficulty + step) };
+  const ceiling = state.ceiling ?? 5;
+  return { ...state, difficulty: Math.min(ceiling, clamp(state.difficulty + step)) as Difficulty };
 }
 
 export function diagnosticDone(state: DiagnosticState): boolean {
@@ -98,11 +111,23 @@ export function diagnosticDone(state: DiagnosticState): boolean {
 }
 
 /**
- * Score the staircase. A correct answer counts for its full difficulty, a miss
- * for one step below it — so a student who tops out at 4 but misses 5 lands
- * between the two rather than being punished for reaching.
+ * Score the staircase, then read it against what this grade is expected to
+ * handle.
+ *
+ * `difficulty` is absolute — it decides what content the student actually gets,
+ * and that must match ability, never grade. `level` is relative, because
+ * "beginner" should mean "behind where they are", not "young": a kindergartener
+ * who tops out at the K-1 rung is doing well, and grading them against a 6th
+ * grader's ladder would label every five-year-old a beginner forever.
+ *
+ * A correct answer counts for its full difficulty, a miss for one step below —
+ * so a student who tops out at 4 but misses 5 lands between the two rather than
+ * being punished for reaching.
  */
-export function scoreDiagnostic(state: DiagnosticState): {
+export function scoreDiagnostic(
+  state: DiagnosticState,
+  expected: Difficulty = 2,
+): {
   level: "beginner" | "intermediate" | "advanced";
   difficulty: Difficulty;
   score: number;
@@ -115,7 +140,15 @@ export function scoreDiagnostic(state: DiagnosticState): {
     0,
   );
   const score = total / state.asked.length;
-  const difficulty = clamp(Math.round(score));
-  const level = score < 2.2 ? "beginner" : score < 3.6 ? "intermediate" : "advanced";
+  // Never place a student more than one rung above their grade, for the same
+  // reason the staircase is capped.
+  const ceiling = state.ceiling ?? clamp(expected + 1);
+  const difficulty = Math.min(ceiling, clamp(Math.round(score))) as Difficulty;
+  const delta = score - expected;
+  // <= not <: a K-1 student who misses every question bottoms out at 0.5
+  // against an expected 1.0, landing on exactly -0.5. They are a beginner.
+  // A capped perfect run tops out around expected + 0.86, so "advanced" has to
+  // sit below that or it would be unreachable for every grade.
+  const level = delta <= -0.5 ? "beginner" : delta < 0.7 ? "intermediate" : "advanced";
   return { level, difficulty, score: Math.round(score * 10) / 10 };
 }

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS students (
   id               TEXT PRIMARY KEY,
   name             TEXT NOT NULL,
   avatar           TEXT NOT NULL,
-  age_band         TEXT NOT NULL,
+  grade_band         TEXT NOT NULL,
   theme            TEXT NOT NULL,
   subject          TEXT NOT NULL DEFAULT 'math',
   skill_level      TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS badges (
 -- down. This is the "cached questions" half of the reliability requirement.
 CREATE TABLE IF NOT EXISTS question_cache (
   id         TEXT PRIMARY KEY,
-  slot       TEXT NOT NULL,          -- subject|topic|difficulty|theme|ageBand|scaffold
+  slot       TEXT NOT NULL,          -- subject|topic|difficulty|theme|gradeBand|scaffold
   payload    TEXT NOT NULL,          -- JSON Question
   uses       INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
@@ -137,17 +137,37 @@ export function db(): Database.Database {
   return conn;
 }
 
-/** Additive migrations for databases created by an earlier version. */
+/** Migrations for databases created by an earlier version. */
 function migrate(conn: Database.Database) {
-  const columns = (conn.prepare("PRAGMA table_info(answers)").all() as { name: string }[]).map(
-    (c) => c.name,
-  );
-  if (!columns.includes("day")) {
+  const columnsOf = (table: string) =>
+    (conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+
+  const answerCols = columnsOf("answers");
+  if (!answerCols.includes("day")) {
     conn.exec("ALTER TABLE answers ADD COLUMN day TEXT NOT NULL DEFAULT ''");
   }
   // Backfill anything written before the column existed, using the UTC date as
   // the best available approximation.
   conn.exec("UPDATE answers SET day = substr(created_at, 1, 10) WHERE day = ''");
+
+  // Students used to be keyed by age band (8-9 / 10-11 / 12-14) before the app
+  // moved to K-6 grade bands. Rename in place and remap, so existing players
+  // keep their level, streak and history instead of being wiped by a reword.
+  const studentCols = columnsOf("students");
+  if (studentCols.includes("age_band") && !studentCols.includes("grade_band")) {
+    conn.exec("ALTER TABLE students RENAME COLUMN age_band TO grade_band");
+    const remap: Record<string, string> = {
+      "8-9": "2-3",   // ages 8-9 sit across 2nd-3rd
+      "10-11": "4-5",
+      "12-14": "6",   // the ladder now stops at 6th grade
+    };
+    const update = conn.prepare("UPDATE students SET grade_band = ? WHERE grade_band = ?");
+    for (const [from, to] of Object.entries(remap)) update.run(to, from);
+  }
+
+  // Anything still holding an unrecognised band lands on the middle of the
+  // range rather than breaking the generator's Record lookup.
+  conn.exec("UPDATE students SET grade_band = '2-3' WHERE grade_band NOT IN ('K-1','2-3','4-5','6')");
 }
 
 export function nowIso(): string {

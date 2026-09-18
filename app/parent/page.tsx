@@ -37,6 +37,26 @@ export default function ParentPage() {
     })();
   }, [loadSummaries]);
 
+  /**
+   * Delete a student and refresh. The server re-checks the PIN session, so a
+   * stale tab can't delete anything after sign-out.
+   */
+  const deleteStudent = async (studentId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/students/${studentId}`, { method: "DELETE" });
+      if (res.status === 403) {
+        setSignedIn(false);
+        setStudents(null);
+        return false;
+      }
+      if (!res.ok) return false;
+      await loadSummaries();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const signOut = async () => {
     await fetch("/api/parent", { method: "DELETE" });
     setSignedIn(false);
@@ -97,7 +117,7 @@ export default function ParentPage() {
 
       <div className="grid gap-6">
         {students?.map((s) => (
-          <StudentSummaryCard key={s.student.id} summary={s} />
+          <StudentSummaryCard key={s.student.id} summary={s} onDelete={deleteStudent} />
         ))}
       </div>
 

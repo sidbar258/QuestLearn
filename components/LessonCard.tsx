@@ -15,6 +15,7 @@ export function LessonCard({
   busy,
   doneLabel = "Got it — let's practise",
   onSkip,
+  earlyReader = false,
 }: {
   lesson: Lesson;
   topicLabel: string;
@@ -23,6 +24,8 @@ export function LessonCard({
   doneLabel?: string;
   /** When present, renders a way out for a student who already knows this. */
   onSkip?: () => void;
+  /** K-1: surface read-aloud as a full-width button, not a small icon. */
+  earlyReader?: boolean;
 }) {
   const readAloud = [
     lesson.title,
@@ -53,8 +56,13 @@ export function LessonCard({
           </h2>
           <p className="text-lg font-bold text-ink-soft leading-snug">{lesson.intro}</p>
         </div>
-        <Speak text={readAloud} label="Read this lesson out loud" />
+        {!earlyReader && <Speak text={readAloud} label="Read this lesson out loud" />}
       </div>
+      {earlyReader && (
+        <div className="mb-4 -mt-2">
+          <Speak text={readAloud} label="Read this lesson out loud" prominent />
+        </div>
+      )}
 
       <section className="mb-5">
         <h3 className="text-sm font-black uppercase tracking-wide text-ink-faint mb-2">

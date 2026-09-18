@@ -2,13 +2,8 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import type { AgeBand, Theme } from "@/lib/types";
-
-const AGE_BANDS: { id: AgeBand; label: string }[] = [
-  { id: "8-9", label: "8–9" },
-  { id: "10-11", label: "10–11" },
-  { id: "12-14", label: "12–14" },
-];
+import { GRADE_BANDS } from "@/lib/catalog";
+import type { GradeBand, Theme } from "@/lib/types";
 
 export function NewPlayerForm({
   action,
@@ -21,7 +16,7 @@ export function NewPlayerForm({
 }) {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(avatars[0]);
-  const [ageBand, setAgeBand] = useState<AgeBand>("10-11");
+  const [gradeBand, setGradeBand] = useState<GradeBand>("2-3");
   const [theme, setTheme] = useState(themes[0].id);
 
   const ready = name.trim().length > 0;
@@ -29,7 +24,7 @@ export function NewPlayerForm({
   return (
     <form action={action} className="grid gap-7">
       <input type="hidden" name="avatar" value={avatar} />
-      <input type="hidden" name="ageBand" value={ageBand} />
+      <input type="hidden" name="gradeBand" value={gradeBand} />
       <input type="hidden" name="theme" value={theme} />
 
       <fieldset>
@@ -72,15 +67,17 @@ export function NewPlayerForm({
       </div>
 
       <fieldset>
-        <legend className="text-xl font-black mb-3">3. How old are you?</legend>
-        <div className="grid grid-cols-3 gap-3">
-          {AGE_BANDS.map((b) => (
+        <legend className="text-xl font-black mb-1">3. What grade are you in?</legend>
+        <p className="text-ink-soft font-bold mb-3">This sets where your quests start.</p>
+        <div className="grid grid-cols-4 gap-2">
+          {GRADE_BANDS.map((b) => (
             <button
               key={b.id}
               type="button"
-              onClick={() => setAgeBand(b.id)}
-              aria-pressed={ageBand === b.id}
-              className={`ql-btn ${ageBand === b.id ? "ql-btn-primary" : "ql-btn-ghost"}`}
+              onClick={() => setGradeBand(b.id)}
+              aria-pressed={gradeBand === b.id}
+              aria-label={b.blurb}
+              className={`ql-btn px-2 ${gradeBand === b.id ? "ql-btn-primary" : "ql-btn-ghost"}`}
             >
               {b.label}
             </button>

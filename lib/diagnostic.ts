@@ -11,7 +11,7 @@ import {
   type DiagnosticState,
 } from "./adaptive";
 import { getQuestion, markServed } from "./ai";
-import { getTopic, topicsAtDifficulty } from "./catalog";
+import { GRADE_START_DIFFICULTY, getTopic, topicsAtDifficulty } from "./catalog";
 import { db, id, nowIso } from "./db";
 import {
   clearStashedQuestion,
@@ -50,7 +50,8 @@ export function startDiagnostic(student: Student): { id: string; state: Diagnost
     .run(nowIso(), student.id);
   clearStashedQuestion(student.id);
 
-  const state = newDiagnostic();
+  // Start where the grade starts, not at a one-size-fits-all rung.
+  const state = newDiagnostic(GRADE_START_DIFFICULTY[student.gradeBand]);
   const diagId = id("dg");
   db()
     .prepare("INSERT INTO diagnostics (id, student_id, subject, state, created_at) VALUES (?,?,?,?,?)")
@@ -79,7 +80,7 @@ export async function nextDiagnosticQuestion(student: Student): Promise<Diagnost
     topic: topic.id,
     difficulty: state.difficulty,
     theme: student.theme,
-    ageBand: student.ageBand,
+    gradeBand: student.gradeBand,
     studentId: student.id,
   });
 
@@ -124,7 +125,7 @@ export function answerDiagnostic(student: Student, choiceIndex: number): Diagnos
   let result: DiagnosticAnswer["result"] = null;
 
   if (done) {
-    const scored = scoreDiagnostic(state);
+    const scored = scoreDiagnostic(state, GRADE_START_DIFFICULTY[student.gradeBand]);
     result = scored;
     db()
       .prepare("UPDATE diagnostics SET result_level = ?, completed_at = ? WHERE id = ?")

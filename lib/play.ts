@@ -57,7 +57,7 @@ export async function startQuestLine(student: Student): Promise<QuestLine> {
     theme: student.theme,
     skillLevel: student.skillLevel ?? "beginner",
     difficulty: student.difficulty,
-    ageBand: student.ageBand,
+    gradeBand: student.gradeBand,
   });
 
   const questline: QuestLine = {
@@ -180,7 +180,7 @@ export async function nextStep(student: Student): Promise<NextStep> {
       topic: stage.topic,
       difficulty: stage.difficulty,
       theme: questline.theme,
-      ageBand: student.ageBand,
+      gradeBand: student.gradeBand,
     });
     return {
       mode: "lesson",
@@ -210,7 +210,7 @@ export async function nextStep(student: Student): Promise<NextStep> {
     topic: stage.topic,
     difficulty,
     theme: questline.theme,
-    ageBand: student.ageBand,
+    gradeBand: student.gradeBand,
     scaffold: adaptation.scaffold,
     studentId: student.id,
   });
@@ -254,7 +254,7 @@ export async function activeStageLesson(
     topic: stage.topic,
     difficulty: stage.difficulty,
     theme: questline.theme,
-    ageBand: student.ageBand,
+    gradeBand: student.gradeBand,
   });
   return { lesson, topicLabel: getTopic(questline.subject, stage.topic).label };
 }

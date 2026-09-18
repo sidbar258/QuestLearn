@@ -14,7 +14,7 @@ import { getTheme, getTopic, getTopics } from "./catalog";
 import { db, id, nowIso } from "./db";
 import { fallbackQuestion } from "./fallback";
 import { fallbackLesson } from "./lessons";
-import type { AgeBand, Difficulty, Lesson, Question, QuestStage, SkillLevel } from "./types";
+import type { GradeBand, Difficulty, Lesson, Question, QuestStage, SkillLevel } from "./types";
 
 const MODEL = "claude-opus-5";
 
@@ -71,10 +71,17 @@ const QuestLineSchema = z.object({
 
 // --- prompt construction -----------------------------------------------------
 
-const AGE_GUIDANCE: Record<AgeBand, string> = {
-  "8-9": "Age 8-9. Very short sentences. Small, friendly numbers. No multi-clause wording.",
-  "10-11": "Age 10-11. Short sentences. Two-step reasoning is fine.",
-  "12-14": "Age 12-14. Can handle multi-step problems and slightly denser wording.",
+const GRADE_GUIDANCE: Record<GradeBand, string> = {
+  // Kindergarten and 1st grade are emergent readers. Every extra word is a
+  // barrier between the child and the maths, so the wording gets brutal limits.
+  "K-1":
+    "Kindergarten to 1st grade (ages 5-7). MANY CANNOT READ YET. Use 10 words or fewer. One short sentence, no commas, no clauses. Numbers under 20 only. Plain wording a 5-year-old hears in speech. Prefer a bare question like 'What is 3 + 2?' over any story. Never use a word longer than two syllables.",
+  "2-3":
+    "2nd to 3rd grade (ages 7-9). Short sentences, around 15 words. One step at a time. Numbers under 100. Simple, common words only.",
+  "4-5":
+    "4th to 5th grade (ages 9-11). Two-step reasoning is fine. Normal sentences, but keep them tight.",
+  "6":
+    "6th grade (ages 11-12). Multi-step problems and slightly denser wording are fine. Keep it concrete, not abstract.",
 };
 
 /**
@@ -98,7 +105,7 @@ function questionUserTurn(args: {
   difficulty: Difficulty;
   themeLabel: string;
   themeFlavor: string;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
   scaffold: boolean;
   avoid: string[];
 }): string {
@@ -106,7 +113,7 @@ function questionUserTurn(args: {
     `Skill: ${args.topicLabel} (topic id: ${args.topic})`,
     `Difficulty: ${args.difficulty} of 5`,
     `Interest theme: ${args.themeLabel} — ${args.themeFlavor}`,
-    `Reading level: ${AGE_GUIDANCE[args.ageBand]}`,
+    `Reading level: ${GRADE_GUIDANCE[args.gradeBand]}`,
   ];
   if (args.scaffold) {
     lines.push(
@@ -139,13 +146,13 @@ export interface GenerateArgs {
   topic: string;
   difficulty: Difficulty;
   theme: string;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
   scaffold?: boolean;
   studentId?: string;
 }
 
 function slotKey(a: GenerateArgs): string {
-  return [a.subject, a.topic, a.difficulty, a.theme, a.ageBand, a.scaffold ? "s" : "n"].join("|");
+  return [a.subject, a.topic, a.difficulty, a.theme, a.gradeBand, a.scaffold ? "s" : "n"].join("|");
 }
 
 /**
@@ -193,7 +200,7 @@ async function generateFresh(args: GenerateArgs): Promise<Question | null> {
               difficulty: args.difficulty,
               themeLabel: theme.label,
               themeFlavor: theme.flavor,
-              ageBand: args.ageBand,
+              gradeBand: args.gradeBand,
               scaffold: args.scaffold ?? false,
               avoid,
             }),
@@ -327,7 +334,7 @@ export async function getQuestLine(args: {
   theme: string;
   skillLevel: SkillLevel;
   difficulty: Difficulty;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
 }): Promise<{ title: string; blurb: string; stages: QuestStage[]; source: "ai" | "fallback" }> {
   const theme = getTheme(args.theme);
   const topics = getTopics(args.subject);
@@ -347,7 +354,7 @@ export async function getQuestLine(args: {
               content: [
                 `Interest theme: ${theme.label} — ${theme.flavor}`,
                 `Student level: ${args.skillLevel} (working at difficulty ${args.difficulty} of 5)`,
-                `Reading level: ${AGE_GUIDANCE[args.ageBand]}`,
+                `Reading level: ${GRADE_GUIDANCE[args.gradeBand]}`,
                 `Use this difficulty ladder for the 4 stages, in order: ${ladder.join(", ")}`,
                 `Available topic ids:\n${topics.map((t) => `- ${t.id} (${t.label}, suits difficulty ${t.band[0]}-${t.band[1]})`).join("\n")}`,
               ].join("\n"),
@@ -432,8 +439,8 @@ Hard requirements:
 - Short sentences. A child reads this on a phone, and it has to fit on one screen.
 - No markdown, no emoji, no preamble.`;
 
-function lessonSlot(a: { subject: string; topic: string; difficulty: Difficulty; theme: string; ageBand: AgeBand }) {
-  return ["lesson", a.subject, a.topic, a.difficulty, a.theme, a.ageBand].join("|");
+function lessonSlot(a: { subject: string; topic: string; difficulty: Difficulty; theme: string; gradeBand: GradeBand }) {
+  return ["lesson", a.subject, a.topic, a.difficulty, a.theme, a.gradeBand].join("|");
 }
 
 function validateLesson(raw: z.infer<typeof LessonSchema>): string | null {
@@ -473,7 +480,7 @@ export interface LessonArgs {
   topic: string;
   difficulty: Difficulty;
   theme: string;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
 }
 
 /**
@@ -501,7 +508,7 @@ export async function getLesson(args: LessonArgs): Promise<Lesson> {
                 `Skill to teach: ${topic.label} (topic id: ${topic.id})`,
                 `Difficulty: ${args.difficulty} of 5 — pitch the example at this level`,
                 `Interest theme: ${theme.label} — ${theme.flavor}`,
-                `Reading level: ${AGE_GUIDANCE[args.ageBand]}`,
+                `Reading level: ${GRADE_GUIDANCE[args.gradeBand]}`,
               ].join("\n"),
             },
           ],

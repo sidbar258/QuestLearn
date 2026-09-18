@@ -1,12 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import type { StudentSummary, TopicSummary } from "@/lib/progress";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
-export function StudentSummaryCard({ summary }: { summary: StudentSummary }) {
+export function StudentSummaryCard({
+  summary,
+  onDelete,
+}: {
+  summary: StudentSummary;
+  /** Runs the delete and refreshes the list. Resolves false if it failed. */
+  onDelete: (studentId: string) => Promise<boolean>;
+}) {
   const { student } = summary;
   const needsAttention = summary.struggling.length > 0;
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <article className="ql-card p-6">
@@ -102,6 +113,66 @@ export function StudentSummaryCard({ summary }: { summary: StudentSummary }) {
           </ul>
         </section>
       )}
+
+      {/* Removing a player is irreversible and erases a child's whole record,
+          so it is deliberately quiet and takes two deliberate taps. It stays
+          easy to find, though: being able to delete a child's data on demand
+          is the point of collecting so little of it. */}
+      <section className="mt-6 pt-5 border-t-2 border-line">
+        {error && (
+          <p role="alert" className="mb-3 font-bold text-danger">
+            {error}
+          </p>
+        )}
+
+        {confirming ? (
+          <div className="rounded-2xl border-2 border-danger bg-danger-soft p-4 ql-rise">
+            <p className="font-black text-danger mb-1">Remove {student.name}?</p>
+            <p className="font-bold text-ink-soft leading-snug mb-4">
+              This permanently erases their level, XP, streak, {summary.badges.length} badge
+              {summary.badges.length === 1 ? "" : "s"} and all {summary.totalAnswered} answered question
+              {summary.totalAnswered === 1 ? "" : "s"}. It cannot be undone.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                className="ql-btn ql-btn-ghost"
+                onClick={() => setConfirming(false)}
+                disabled={deleting}
+              >
+                Keep {student.name}
+              </button>
+              <button
+                type="button"
+                className="ql-btn"
+                style={{ background: "var(--danger)", color: "#fff" }}
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  setError(null);
+                  const ok = await onDelete(student.id);
+                  if (!ok) {
+                    setError("Could not remove this player. Try again.");
+                    setDeleting(false);
+                    setConfirming(false);
+                  }
+                  // On success the card unmounts with the refreshed list.
+                }}
+              >
+                {deleting ? "Removing…" : "Yes, remove"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="font-black text-ink-faint underline"
+            onClick={() => setConfirming(true)}
+          >
+            Remove {student.name} and delete their data
+          </button>
+        )}
+      </section>
     </article>
   );
 }

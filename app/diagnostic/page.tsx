@@ -11,6 +11,7 @@ interface NextPayload {
   question: ClientQuestion;
   index: number;
   total: number;
+  earlyReader?: boolean;
 }
 
 interface AnswerPayload extends Feedback {
@@ -146,6 +147,7 @@ export default function DiagnosticPage() {
           busy={busy}
           onAnswer={(i) => void answer(i)}
           onNext={() => void load("GET")}
+          earlyReader={payload.earlyReader}
           nextLabel={feedback?.index === feedback?.total ? "See my level" : "Next question"}
         />
       )}

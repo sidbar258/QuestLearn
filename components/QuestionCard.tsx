@@ -20,6 +20,7 @@ export function QuestionCard({
   onAnswer,
   onNext,
   nextLabel = "Next",
+  earlyReader = false,
 }: {
   question: ClientQuestion;
   feedback: Feedback | null;
@@ -27,6 +28,8 @@ export function QuestionCard({
   onAnswer: (choiceIndex: number, timeMs: number) => void;
   onNext: () => void;
   nextLabel?: string;
+  /** K-1: surface read-aloud as a full-width button, not a small icon. */
+  earlyReader?: boolean;
 }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [hintOpen, setHintOpen] = useState(false);
@@ -89,11 +92,14 @@ export function QuestionCard({
         </div>
       </div>
 
-      <div className="flex items-start gap-3 mt-3 mb-5">
-        <p className="flex-1 text-[clamp(1.15rem,4.4vw,1.45rem)] leading-snug font-extrabold">
-          {question.prompt}
-        </p>
-        <Speak text={question.prompt} />
+      <div className="mt-3 mb-5">
+        <div className="flex items-start gap-3">
+          <p className="flex-1 text-[clamp(1.15rem,4.4vw,1.45rem)] leading-snug font-extrabold">
+            {question.prompt}
+          </p>
+          {!earlyReader && <Speak text={question.prompt} />}
+        </div>
+        {earlyReader && <Speak text={question.prompt} prominent />}
       </div>
 
       <div className="grid gap-3" role="group" aria-label="Answer choices">

@@ -4,13 +4,13 @@
 
 import { db, id, nowIso, today } from "./db";
 import { levelFromXp } from "./gamify";
-import type { AgeBand, Difficulty, SkillLevel, Student } from "./types";
+import type { GradeBand, Difficulty, SkillLevel, Student } from "./types";
 
 interface Row {
   id: string;
   name: string;
   avatar: string;
-  age_band: string;
+  grade_band: string;
   theme: string;
   subject: string;
   skill_level: string | null;
@@ -27,7 +27,7 @@ function toStudent(r: Row): Student {
     id: r.id,
     name: r.name,
     avatar: r.avatar,
-    ageBand: r.age_band as AgeBand,
+    gradeBand: r.grade_band as GradeBand,
     theme: r.theme,
     subject: r.subject,
     skillLevel: r.skill_level as SkillLevel | null,
@@ -53,7 +53,7 @@ export function getStudent(studentId: string): Student | null {
 export function createStudent(input: {
   name: string;
   avatar: string;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
   theme: string;
   subject?: string;
 }): Student {
@@ -61,7 +61,7 @@ export function createStudent(input: {
     id: id("stu"),
     name: input.name.trim().slice(0, 24),
     avatar: input.avatar,
-    ageBand: input.ageBand,
+    gradeBand: input.gradeBand,
     theme: input.theme,
     subject: input.subject ?? "math",
     skillLevel: null,
@@ -74,8 +74,8 @@ export function createStudent(input: {
   };
   db()
     .prepare(
-      `INSERT INTO students (id, name, avatar, age_band, theme, subject, skill_level, difficulty, xp, level, streak_days, last_active_date, created_at)
-       VALUES (@id, @name, @avatar, @ageBand, @theme, @subject, NULL, @difficulty, 0, 1, 0, NULL, @createdAt)`,
+      `INSERT INTO students (id, name, avatar, grade_band, theme, subject, skill_level, difficulty, xp, level, streak_days, last_active_date, created_at)
+       VALUES (@id, @name, @avatar, @gradeBand, @theme, @subject, NULL, @difficulty, 0, 1, 0, NULL, @createdAt)`,
     )
     .run(student);
   return student;

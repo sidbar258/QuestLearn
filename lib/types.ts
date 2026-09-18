@@ -5,7 +5,12 @@ export type SkillLevel = "beginner" | "intermediate" | "advanced";
 /** 1 = easiest, 5 = hardest. The adaptive engine moves a student along this axis. */
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 
-export type AgeBand = "8-9" | "10-11" | "12-14";
+/**
+ * School grade, not age — it is what a child can answer instantly, what a
+ * teacher thinks in, and what the curriculum is actually pegged to.
+ * The app covers Kindergarten through 6th grade.
+ */
+export type GradeBand = "K-1" | "2-3" | "4-5" | "6";
 
 export interface Theme {
   id: string;
@@ -85,7 +90,7 @@ export interface Student {
   id: string;
   name: string;
   avatar: string;
-  ageBand: AgeBand;
+  gradeBand: GradeBand;
   theme: string;
   subject: string;
   skillLevel: SkillLevel | null;

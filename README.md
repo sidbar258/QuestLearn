@@ -1,6 +1,7 @@
 # QuestLearn
 
-Adaptive, gamified learning quests for ages 8–14 — personalised tutoring that
+Adaptive, gamified learning quests for **Kindergarten through 6th grade** —
+personalised tutoring that
 plays like a game, at zero cost per student.
 
 Personal tutoring runs $40–80/hour, so the students who most need it don't get
@@ -10,9 +11,9 @@ stapled to a static worksheet. QuestLearn makes the *content itself* adaptive �
 questions are written for one student's level and one student's interests, and
 the difficulty moves in real time as they play.
 
-| Pick a player | Learn it first | Then practise | Instant feedback | Grown-up view |
+| Pick a player | Learn it first | Then practise | A kindergartener's view | Grown-up view |
 |---|---|---|---|---|
-| ![Profile picker](docs/screen-home.png) | ![Lesson](docs/screen-lesson.png) | ![Quest](docs/screen-play.png) | ![Feedback](docs/screen-feedback.png) | ![Parent dashboard](docs/screen-parent.png) |
+| ![Profile picker](docs/screen-home.png) | ![Lesson](docs/screen-lesson.png) | ![Quest](docs/screen-play.png) | ![K-1 question](docs/screen-k1.png) | ![Parent dashboard](docs/screen-parent.png) |
 
 ## Quick start
 
@@ -34,6 +35,18 @@ Pick a profile → Placement quiz → Quest line → Lesson → Practise → Par
                    staircase)        easy→hard)   first)    per answer)  flagged topics)
 ```
 
+**One ladder, K–6.** Fifteen maths topics span counting and shapes at the
+bottom to ratios, percentages and one-step equations at the top — roughly
+Kindergarten to 6th grade, with nothing from middle-school algebra. Difficulty
+1–5 maps onto grade (1 → K–1, 3 → 3rd–4th, 5 → 6th), and a student picks a
+grade rather than an age, because that is what a child can answer instantly and
+what a teacher already thinks in.
+
+**Kindergarteners can't read the question.** At the K–1 rung the words are the
+barrier, not the maths, so the floor drops the story entirely — "What is 3 + 2?"
+instead of a themed word problem — caps prompts at ten words, and promotes
+read-aloud from a small icon to a full-width **Read this to me** button.
+
 **Diagnostic.** Seven questions on a staircase — a correct answer steps the
 difficulty up, a miss steps it down — so it converges on the student's edge
 instead of marching them through a fixed worksheet. Correct answers score at
@@ -41,6 +54,16 @@ their full difficulty and misses one step below, so a student who tops out at 4
 but misses 5 lands between the two rather than being punished for reaching.
 Placement answers are kept out of the practice log so they can't skew the
 adaptive engine or the parent summary.
+
+The staircase is capped one rung above the student's grade, and so is the
+placement it produces. Without that, seven lucky guesses — and with four
+choices a guess lands a quarter of the time — walk a five-year-old up to
+6th-grade ratios, and the quest line then gets built there. Under-placing costs
+much less: the in-quest mastery engine promotes a genuinely advanced student
+within a few questions, while an over-placed one just quits. For the same
+reason the *label* is relative to grade while the *content* is not — a
+kindergartener who aces the K–1 rung reads as "advanced" and gets 1st-grade
+work, rather than being a permanent beginner sent to 5th-grade decimals.
 
 **Teach before you test.** Every stage opens with a short lesson, not a
 question: what the skill is, the method in 2–4 steps, one fully worked example,
@@ -73,6 +96,14 @@ queues level-ups, badges and stage clears rather than letting them collide.
 plain-English headline, topics mastered, topics flagged as hard, a 7-day
 activity chart, badges. It never exposes the raw answer log.
 
+**Removing a player.** Grown-ups can delete a student and everything attached
+to them. It takes two deliberate taps and spells out the cost first ("erases
+their level, XP, streak, 3 badges and all 47 answered questions"), because it
+can't be undone. The delete is PIN-gated server-side, not just hidden in the
+UI — and the end-to-end suite verifies there are no orphaned rows left in any
+table afterwards, so "deleting a player deletes all of it" is a tested claim
+rather than a hopeful one.
+
 ## Design decisions worth knowing
 
 **Grading happens on the server.** The question the student is looking at is
@@ -86,7 +117,8 @@ profile holds nothing sensitive. The parent dashboard aggregates several
 children's progress, so it gets a PIN (scrypt-hashed; sessions stored as a keyed
 digest so the database never holds a live credential).
 
-**Minimal data, COPPA-aware.** A display name, an age *band* (not a birthday), an
+**Minimal data, COPPA-aware.** A display name, a grade *band* (not an age or a
+birthday), an
 avatar emoji, a chosen theme, and which questions were right or wrong. No email,
 no location, no third-party trackers, no analytics. Everything lives in one
 SQLite file; deleting a player deletes all of it.
@@ -102,18 +134,18 @@ stated answer matches the index it gave.
 
 ```bash
 npm test              # bank + lessons + contrast — no server needed
-npm run test:bank     # 9,900 generated questions verified
-npm run test:lessons  #   330 lessons, every worked example checked
+npm run test:bank     # 13,500 generated questions verified
+npm run test:lessons  #    450 lessons, every worked example checked
 npm run check:contrast
 
 # End-to-end needs a running server and a fresh database
 # (it asserts the first-run parent-PIN setup path):
 rm -rf data && npm run build && QUESTLEARN_E2E=1 npm start
-npm run test:e2e -- http://localhost:3000     # 62 checks through the real HTTP API
+npm run test:e2e -- http://localhost:3000     # 80 checks through the real HTTP API
 ```
 
 `test:bank` recomputes the answer to every question the offline generator can
-produce — 11 topics × 5 difficulties × 6 themes × scaffolded and not — from its
+produce — 15 topics × 5 difficulties × 6 themes × scaffolded and not — from its
 own prompt text, and asserts the marked choice matches. It also rejects
 giveaway distractors (zero, negative, duplicated) and malformed rendering.
 
@@ -126,7 +158,9 @@ lesson, so a stage can never open empty.
 the XP, levels and badges that result, then plays one badly and checks the
 engine steps down one rung at a time and scaffolds. It reads the answer key from `/api/dev/peek`,
 which returns 404 unless `QUESTLEARN_E2E=1` — and asserts the normal API never
-leaks an answer before you commit to one.
+leaks an answer before you commit to one. `/api/dev/integrity` (same gate)
+counts rows pointing at students who no longer exist, which is how the delete
+test proves the cascade actually fired.
 
 ## Stack
 
@@ -168,4 +202,4 @@ question *and* lesson via the Web Speech API.
 | `QUESTLEARN_AI_TIMEOUT_MS` | `9000` | Latency budget before falling back. |
 | `QUESTLEARN_DATA_DIR` | `./data` | Where the SQLite file lives. |
 | `QUESTLEARN_SECRET` | auto | Signs parent sessions. Set explicitly if running more than one instance. |
-| `QUESTLEARN_E2E` | unset | `1` enables the test-only answer-key endpoint. Never set in production. |
+| `QUESTLEARN_E2E` | unset | `1` enables the test-only `/api/dev/*` endpoints (answer key, integrity check). Never set in production. |

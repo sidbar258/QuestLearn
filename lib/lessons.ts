@@ -25,6 +25,61 @@ interface Draft {
 type Builder = (v: Vocab) => Draft;
 
 const LESSONS: Record<string, Builder> = {
+  // --- K-2 number sense. Wording here is as plain as it gets; these readers
+  // are five and six years old and the words must not be the hard part.
+
+  counting: () => ({
+    title: "Counting on",
+    intro: `Numbers always go up by one, in the same order every time.`,
+    steps: ["Find the number you start on.", "Count up one.", "That is the next number."],
+    example: {
+      problem: `What number comes after 7?`,
+      working: ["Start at 7.", "Count up one: 8."],
+      answer: "8",
+    },
+    tip: "Say the numbers out loud. Your voice helps you keep your place.",
+  }),
+
+  comparing: () => ({
+    title: "Bigger or smaller",
+    intro: `One number is bigger than another when you say it later as you count up.`,
+    steps: [
+      "Count up from the smallest.",
+      "The number you say last is the biggest.",
+      "The number you say first is the smallest.",
+    ],
+    example: {
+      problem: `Which is biggest: 8, 15, 3 or 11?`,
+      working: ["Count up: 3, then 8, then 11, then 15.", "15 comes last, so 15 is biggest."],
+      answer: "15",
+    },
+    tip: "A two-digit number always beats a one-digit one. 9 is smaller than 10.",
+  }),
+
+  "skip-counting": () => ({
+    title: "Counting in jumps",
+    intro: `Skip counting jumps the same amount each time instead of going up by one.`,
+    steps: ["Find the size of the jump.", "Add that amount to the last number.", "Keep jumping by the same amount."],
+    example: {
+      problem: `Count by 5s. What comes next? 10, 15, 20,\u00A0?`,
+      working: ["Each jump adds 5.", "20 + 5 = 25."],
+      answer: "25",
+    },
+    tip: "Counting by 2s, 5s and 10s is how times tables start. Learn these and multiplying gets easy.",
+  }),
+
+  shapes: () => ({
+    title: "Sides and corners",
+    intro: `Flat shapes are named by how many straight sides they have.`,
+    steps: ["Pick one corner to start from.", "Count each straight side as you go round.", "Stop when you reach the start again."],
+    example: {
+      problem: `How many sides does a pentagon have?`,
+      working: ["Go round the edge, counting each straight side.", "1, 2, 3, 4, 5."],
+      answer: "5",
+    },
+    tip: "A shape has as many corners as it has sides, so you can count whichever is easier.",
+  }),
+
   addition: (v) => ({
     title: "Putting amounts together",
     intro: `Adding means joining two amounts to find how many there are altogether.`,
@@ -195,20 +250,15 @@ const LESSONS: Record<string, Builder> = {
     intro: `The letter x just stands for a number you don't know yet. Your job is to uncover it.`,
     steps: [
       "Look at what has been done to x.",
-      "Undo it in reverse order: plus and minus first, then times and divide.",
-      "Do the same thing to both sides, and x is left on its own.",
+      "Do the opposite to both sides: minus undoes plus, divide undoes times.",
+      "That leaves x on its own.",
     ],
     example: {
-      problem: `${v.actor} ${v.verb} the same amount in each of 4 runs, then finds 7 more — 31 in total. Solve 4x + 7 = 31.`,
-      working: [
-        "Undo the + 7 first: 31 − 7 = 24.",
-        "That leaves 4x = 24.",
-        "Undo the × 4: 24 ÷ 4 = 6.",
-        "So x = 6.",
-      ],
-      answer: "x = 6",
+      problem: `${v.actor} had some ${v.item}, found 7 more, and now has 19. Solve x + 7 = 19.`,
+      working: ["The opposite of + 7 is − 7.", "Take 7 from both sides: 19 − 7 = 12.", "So x = 12."],
+      answer: "x = 12",
     },
-    tip: "Whatever you do to one side, do to the other. That's what keeps it balanced.",
+    tip: "Whatever you do to one side, do to the other. That is what keeps it balanced.",
   }),
 
   "word-problems": (v) => ({

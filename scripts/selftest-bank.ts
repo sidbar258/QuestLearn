@@ -69,12 +69,49 @@ for (const topic of MATH_TOPICS) {
             const [total, a, b] = nums;
             expect(tag, Number(ans) === (total * a) / (a + b), `ratio ${a}:${b} of ${total} != ${ans}`);
           } else if (topic.id === "pre-algebra") {
-            const m = q.prompt.match(/Solve (\d+)x \+ (\d+) = (\d+)/);
-            if (!m) fail(tag, "no equation in prompt");
-            else {
-              const [, c, k, res] = m.map(Number);
-              expect(tag, Number(ans) === (res - k) / c, `${c}x+${k}=${res} => ${(res - k) / c}, marked ${ans}`);
+            // 6th grade is one-step: x + p = q, or px = q.
+            const add = q.prompt.match(/Solve x \+ (\d+) = (\d+)/);
+            const mul = q.prompt.match(/Solve (\d+)x = (\d+)/);
+            if (add) {
+              const [, p2, qq] = add.map(Number);
+              expect(tag, Number(ans) === qq - p2, `x+${p2}=${qq} => ${qq - p2}, marked ${ans}`);
+            } else if (mul) {
+              const [, c, res] = mul.map(Number);
+              expect(tag, Number.isInteger(res / c), `${c}x=${res} has no whole solution`);
+              expect(tag, Number(ans) === res / c, `${c}x=${res} => ${res / c}, marked ${ans}`);
+            } else {
+              fail(tag, `no one-step equation in prompt: ${q.prompt}`);
             }
+          } else if (topic.id === "counting") {
+            const after = q.prompt.match(/comes after (\d+)\?/);
+            const seq = q.prompt.match(/\?\s*(\d+), (\d+), (\d+),[\s\u00A0]*\?/);
+            if (after) expect(tag, Number(ans) === Number(after[1]) + 1, `after ${after[1]} != ${ans}`);
+            else if (seq) {
+              const [, a, b, c] = seq.map(Number);
+              expect(tag, b === a + 1 && c === b + 1, `not consecutive: ${a},${b},${c}`);
+              expect(tag, Number(ans) === c + 1, `next after ${c} != ${ans}`);
+            } else fail(tag, `counting prompt shape changed: ${q.prompt}`);
+          } else if (topic.id === "comparing") {
+            const wantBiggest = /biggest/.test(q.prompt);
+            const values = q.choices.map(Number);
+            expect(tag, values.every((v) => !Number.isNaN(v)), `non-numeric choices ${JSON.stringify(q.choices)}`);
+            const target = wantBiggest ? Math.max(...values) : Math.min(...values);
+            expect(tag, Number(ans) === target, `${wantBiggest ? "max" : "min"} of ${values.join(",")} != ${ans}`);
+          } else if (topic.id === "skip-counting") {
+            const m = q.prompt.match(/Count by (\d+)s\. What comes next\? (\d+), (\d+), (\d+),[\s\u00A0]*\?/);
+            if (!m) fail(tag, `skip-counting prompt shape changed: ${q.prompt}`);
+            else {
+              const [, step, a, b, c] = m.map(Number);
+              expect(tag, b - a === step && c - b === step, `steps not ${step}: ${a},${b},${c}`);
+              expect(tag, Number(ans) === c + step, `${c}+${step} != ${ans}`);
+            }
+          } else if (topic.id === "shapes") {
+            const SIDES: Record<string, number> = {
+              triangle: 3, square: 4, rectangle: 4, pentagon: 5, hexagon: 6, octagon: 8,
+            };
+            const m = q.prompt.match(/does a (\w+) have/);
+            if (!m || !(m[1] in SIDES)) fail(tag, `unknown shape in: ${q.prompt}`);
+            else expect(tag, Number(ans) === SIDES[m[1]], `${m[1]} has ${SIDES[m[1]]}, marked ${ans}`);
           } else if (topic.id === "decimals") {
             const m = q.prompt.match(/([\d.]+) kg of supplies, then adds ([\d.]+) kg/);
             if (!m) fail(tag, "decimal prompt shape changed");

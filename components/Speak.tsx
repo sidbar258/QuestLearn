@@ -10,7 +10,16 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * Rendered under a key that changes per question, so a new question remounts it
  * and any narration in flight is cancelled by the unmount cleanup.
  */
-export function Speak({ text, label = "Read this out loud" }: { text: string; label?: string }) {
+export function Speak({
+  text,
+  label = "Read this out loud",
+  prominent = false,
+}: {
+  text: string;
+  label?: string;
+  /** For emergent readers, where the icon alone is too easy to miss. */
+  prominent?: boolean;
+}) {
   const supported = useSpeechSupport();
   const [speaking, setSpeaking] = useState(false);
 
@@ -38,6 +47,20 @@ export function Speak({ text, label = "Read this out loud" }: { text: string; la
     setSpeaking(true);
     synth.speak(utterance);
   };
+
+  if (prominent) {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={speaking ? "Stop reading" : label}
+        className="ql-btn ql-btn-ghost w-full mt-3"
+      >
+        <span aria-hidden className="text-2xl">{speaking ? "⏹️" : "🔊"}</span>
+        {speaking ? "Stop" : "Read this to me"}
+      </button>
+    );
+  }
 
   return (
     <button
